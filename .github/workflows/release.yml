@@ -2,6 +2,10 @@ name: Publish to Maven Central
 
 on:
   workflow_dispatch:
+    inputs:
+      RELEASE_VERSION:
+        type: string
+        description: Release Version
   release:
     types:
       - published
@@ -11,15 +15,17 @@ jobs:
     name: Publish plugin to Maven Central
     runs-on: ubuntu-latest
 
-    env:
-      RELEASE_VERSION: ${{ github.ref_name }}
-      OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup release version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "RELEASE_VERSION=${{ github.event.inputs.RELEASE_VERSION }}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          fi
 
       - name: Setup JDK
         uses: actions/setup-java@v4
@@ -29,14 +35,13 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE  }}
 
-      - name: Configure GPG agent for Gradle
-        run: |
-          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
-          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
-          echo RELOADAGENT | gpg-connect-agent
-
       - name: Publish to Sonatype
-        run: ./gradlew clean fatJar publish
+        run: ./gradlew clean fatJar publishToSonatype closeAndReleaseSonatypeStagingRepository
+        env:
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2

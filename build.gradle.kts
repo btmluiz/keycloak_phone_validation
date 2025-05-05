@@ -1,5 +1,6 @@
 plugins {
     kotlin("jvm") version "2.1.20"
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
     `maven-publish`
     signing
 }
@@ -16,6 +17,9 @@ val libphonenumberVersion = "8.13.54"
 java {
     sourceCompatibility = javaVersion
     targetCompatibility = javaVersion
+
+    withJavadocJar()
+    withSourcesJar()
 }
 
 repositories {
@@ -90,28 +94,31 @@ publishing {
             }
         }
     }
+}
 
+nexusPublishing {
     repositories {
-        maven {
-            name = "sonatype"
-            url = uri("https://oss.sonatype.org/service/local/staging/deploy/maven2/")
-            credentials {
-                username = findProperty("ossrhUsername") as String
-                password = findProperty("ossrhPassword") as String
-            }
+        sonatype {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+            username = findProperty("ossrhUsername") as String? ?: System.getenv("OSSRH_USERNAME")
+            password = findProperty("ossrhPassword") as String? ?: System.getenv("OSSRH_PASSWORD")
         }
     }
 }
 
 signing {
-    val signingKeyId = findProperty("signing.keyId") as String? ?: System.getenv("GPG_KEY_ID")
-    val signingPassword = findProperty("signing.password") as String? ?: System.getenv("GPG_PASSPHRASE")
-    val signingKeyFile = findProperty("signing.secretKeyRingFile") as String? ?: System.getenv("GPG_PRIVATE_KEY")
+    val signingKeyId: String? = findProperty("signing.keyId") as String? ?: System.getenv("ORG_GRADLE_PROJECT_signingKeyId")
+    val signingPassword: String? = findProperty("signing.password") as String? ?: System.getenv("ORG_GRADLE_PROJECT_signingPassword")
+    val signingKey: String? = findProperty("signing.secretKey") as String? ?: System.getenv("GPG_PRIVATE_KEY")
 
-    if (signingKeyId != null && signingPassword != null && signingKeyFile != null) {
-        useInMemoryPgpKeys(signingKeyId, File(signingKeyFile).readText(), signingPassword)
-        sign(publishing.publications)
+    if (signingKeyId != null && signingPassword != null && signingKey != null) {
+        useGpgCmd()
+        useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
     }
+
+
+    sign(publishing.publications["mavenJava"])
 }
 
 kotlin {
