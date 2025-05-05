@@ -10,6 +10,9 @@ on:
     types:
       - published
 
+permissions:
+  contents: write
+
 jobs:
   publish:
     name: Publish plugin to Maven Central
@@ -35,13 +38,8 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE  }}
 
-      - name: Publish to Sonatype
-        run: ./gradlew clean fatJar publishToSonatype closeAndReleaseSonatypeStagingRepository
-        env:
-          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
-          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
-          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+      - name: Build
+        run: ./gradlew clean fatJar
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v2
@@ -51,3 +49,9 @@ jobs:
           files: build/libs/*-all.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to maven central
+        run: ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+        env:
+          OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+          OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}

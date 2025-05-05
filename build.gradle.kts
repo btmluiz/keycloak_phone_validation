@@ -74,8 +74,10 @@ publishing {
                 url = "https://github.com/btmluiz/keycloak-phone-validation"
 
                 licenses {
-                    name = "Apache License 2.0"
-                    url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    license {
+                        name = "Apache License 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
                 }
 
                 developers {
@@ -108,16 +110,7 @@ nexusPublishing {
 }
 
 signing {
-    val signingKeyId: String? = findProperty("signing.keyId") as String? ?: System.getenv("ORG_GRADLE_PROJECT_signingKeyId")
-    val signingPassword: String? = findProperty("signing.password") as String? ?: System.getenv("ORG_GRADLE_PROJECT_signingPassword")
-    val signingKey: String? = findProperty("signing.secretKey") as String? ?: System.getenv("GPG_PRIVATE_KEY")
-
-    if (signingKeyId != null && signingPassword != null && signingKey != null) {
-        useGpgCmd()
-        useInMemoryPgpKeys(signingKeyId, signingKey, signingPassword)
-    }
-
-
+    useGpgCmd()
     sign(publishing.publications["mavenJava"])
 }
 
