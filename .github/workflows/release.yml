@@ -1,0 +1,48 @@
+name: Publish to Maven Central
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+jobs:
+  publish:
+    name: Publish plugin to Maven Central
+    runs-on: ubuntu-latest
+
+    env:
+      RELEASE_VERSION: ${{ github.ref_name }}
+      OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
+      OSSRH_PASSWORD: ${{ secrets.OSSRH_PASSWORD }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE  }}
+
+      - name: Configure GPG agent for Gradle
+        run: |
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo RELOADAGENT | gpg-connect-agent
+
+      - name: Publish to Sonatype
+        run: ./gradlew clean fatJar publish
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v2
+        with:
+          name: keycloak_phone_validation-${{ env.RELEASE_VERSION }}.jar
+          tag_name: ${{ github.ref }}
+          files: build/libs/*-all.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
